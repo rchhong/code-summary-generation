@@ -2,7 +2,7 @@ import datasets
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
     AutoModelForSeq2SeqLM, Trainer, TrainingArguments, HfArgumentParser
-from helpers import prepare_train_dataset_code_summary, prepare_validation_dataset_code_summary, compute_accuracy
+from helpers import prepare_dataset_code_summary, compute_rouge_and_bleu
 import os
 import json
 
@@ -29,7 +29,7 @@ def main():
     #     *This argument is required*.
 
     argp.add_argument('--model', type=str,
-                      default='google/electra-small-discriminator',
+                      default='uclanlp/plbart-python-en_XX',
                       help="""This argument specifies the base model to fine-tune.
         This should either be a HuggingFace model ID (see https://huggingface.co/models)
         or a path to a saved model checkpoint (a folder containing config.json and pytorch_model.bin).""")
@@ -51,54 +51,42 @@ def main():
 
     # Dataset selection
     # IMPORTANT: this code path allows you to load custom datasets different from the standard SQuAD or SNLI ones.
-    # You need to format the dataset appropriately. For SNLI, you can prepare a file with each line containing one
-    # example as follows:
-    # {"premise": "Two women are embracing.", "hypothesis": "The sisters are hugging.", "label": 1}
-    if args.dataset.endswith('.json') or args.dataset.endswith('.jsonl'):
-        dataset_id = None
-        # Load from local json/jsonl file
-        dataset = datasets.load_dataset('json', data_files=args.dataset)
-        # By default, the "json" dataset loader places all examples in the train split,
-        # so if we want to use a jsonl file for evaluation we need to get the "train" split
-        # from the loaded dataset
-        eval_split = 'train'
-    else:
-        default_datasets = {'qa': ('squad',), 'nli': ('snli',)}
-        dataset_id = tuple(args.dataset.split(':')) if args.dataset is not None else \
-            default_datasets[args.task]
-        # MNLI has two validation splits (one with matched domains and one with mismatched domains). Most datasets just have one "validation" split
-        eval_split = 'validation_matched' if dataset_id == ('glue', 'mnli') else 'validation'
-        # Load the raw data
-        dataset = datasets.load_dataset(*dataset_id)
+    # Load from local json/jsonl file
+    dataset = datasets.load_dataset('json', data_files=args.dataset)
+    # By default, the "json" dataset loader places all examples in the train split,
+    # so if we want to use a jsonl file for evaluation we need to get the "train" split
+    # from the loaded dataset
+    eval_split = 'train'
 
     task_kwargs = {}
+
+    tokenizer_kwargs = {
+        'src_lang': 'python',
+        'tgt_lang': 'en_XX'
+    }
 
     # Here we select the right model fine-tuning head
     model_classes = {'code-summary': AutoModelForSeq2SeqLM}
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
     model = model_class.from_pretrained(args.model, **task_kwargs)
-    tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.model, **tokenizer_kwargs, use_fast=True)
 
     # Select the dataset preprocessing function (these functions are defined in helpers.py)
-    if args.task == 'qa':
-        prepare_train_dataset = lambda exs: prepare_train_dataset_code_summary(exs, tokenizer)
-        prepare_eval_dataset = lambda exs: prepare_validation_dataset_code_summary(exs, tokenizer)
+    if args.task == 'code-summary':
+        prepare_train_dataset = lambda exs: prepare_dataset_code_summary(exs, tokenizer)
+        prepare_eval_dataset = lambda exs: prepare_dataset_code_summary(exs, tokenizer)
     else:
         raise ValueError('Unrecognized task name: {}'.format(args.task))
 
     print("Preprocessing data... (this takes a little bit, should only happen once per dataset)")
-    if dataset_id == ('snli',):
-        # remove SNLI examples with no label
-        dataset = dataset.filter(lambda ex: ex['label'] != -1)
-
-        # if(args.task == 'nli-removed'):
-        #     dataset = dataset.filter(lambda ex: ex['label'] != ex['predicted_label'])
+    dataset = dataset.filter(lambda ex: ex['rewritten_intent'] != None)
 
     train_dataset = None
     eval_dataset = None
     train_dataset_featurized = None
     eval_dataset_featurized = None
+
     if training_args.do_train:
         train_dataset = dataset['train']
         if args.max_train_samples:
@@ -109,6 +97,7 @@ def main():
             num_proc=NUM_PREPROCESSING_WORKERS,
             remove_columns=train_dataset.column_names
         )
+
     if training_args.do_eval:
         eval_dataset = dataset[eval_split]
         if args.max_eval_samples:
@@ -128,15 +117,16 @@ def main():
     # For an example of a valid compute_metrics function, see compute_accuracy in helpers.py.
     compute_metrics = None
     if args.task == 'code-summary':
-        compute_metrics = compute_accuracy
+        compute_metrics = compute_rouge_and_bleu
 
     # This function wraps the compute_metrics function, storing the model's predictions
     # so that they can be dumped along with the computed metrics
     eval_predictions = None
     def compute_metrics_and_store_predictions(eval_preds):
         nonlocal eval_predictions
+        nonlocal tokenizer
         eval_predictions = eval_preds
-        return compute_metrics(eval_preds)
+        return compute_metrics(eval_preds, tokenizer)
 
     # Initialize the Trainer object with the specified arguments and the model and dataset we loaded above
     trainer = trainer_class(

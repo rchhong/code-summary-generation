@@ -8,46 +8,40 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-QA_MAX_ANSWER_LENGTH = 30
+import evaluate
 
 
-# This function preprocesses an NLI dataset, tokenizing premises and hypotheses.
-def prepare_train_dataset_code_summary(examples, tokenizer, max_seq_length=None):
+# This function preprocesses the CoNoLA dataset.  Tokenizes snippets and produces natural language
+def prepare_dataset_code_summary(examples, tokenizer, max_seq_length=None):
     max_seq_length = tokenizer.model_max_length if max_seq_length is None else max_seq_length
 
     tokenized_examples = tokenizer(
-        examples['premise'],
-        examples['hypothesis'],
+        examples['snippet'],
+        text_target = examples['rewritten_intent'],
         truncation=True,
         max_length=max_seq_length,
-        padding='max_length'
+        padding='max_length',
     )
 
-    tokenized_examples['label'] = examples['label']
     return tokenized_examples
 
-# This function preprocesses an NLI dataset, tokenizing premises, but not the hypothesis.
-# https://aclanthology.org/S18-2023.pdf
-def prepare_validation_dataset_code_summary(examples, tokenizer, max_seq_length=None):
-    max_seq_length = tokenizer.model_max_length if max_seq_length is None else max_seq_length
-    tokenized_examples = tokenizer(
-        examples['hypothesis']
-        truncation=True,
-        max_length=max_seq_length,
-        padding='max_length'
-    )
-
-    tokenized_examples['label'] = examples['label']
-    return tokenized_examples
 
 # This function computes sentence-classification accuracy.
 # Functions with signatures like this one work as the "compute_metrics" argument of transformers.Trainer.
-def compute_accuracy(eval_preds: EvalPrediction):
+def compute_rouge_and_bleu(eval_preds: EvalPrediction, tokenizer):
+    rouge = evaluate.load("rouge")
+    bleu = evaluate.load("bleu")
+
+    argmax = np.argmax(eval_preds.predictions[0], axis = 1)
+
+    decoded_predictions = [tokenizer.decode(x) for x in argmax]
+    decoded_labels = [tokenizer.decode(x) for x in eval_preds.label_ids]
+
     return {
-        'accuracy': (np.argmax(
-            eval_preds.predictions,
-            axis=1) == eval_preds.label_ids).astype(
-            np.float32).mean().item()
+        'rouge': rouge.compute(predictions=decoded_predictions,
+                               references=decoded_labels),
+        'bleu': bleu.compute(predictions=decoded_predictions,
+                               references=decoded_labels)
     }
 
 # Adapted from https://github.com/huggingface/transformers/blob/master/examples/pytorch/question-answering/trainer_qa.py

@@ -1,4 +1,9 @@
 transformers==4.23.0
 datasets==2.10.0
+evaluate
+sentencepiece
 tqdm
 torch
+absl-py
+rouge_score
+nltk
