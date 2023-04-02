@@ -15,13 +15,22 @@ import evaluate
 def prepare_dataset_code_summary(examples, tokenizer, max_seq_length=None):
     max_seq_length = tokenizer.model_max_length if max_seq_length is None else max_seq_length
 
+    examples_with_prompts = list(map(lambda x: "Summarize Python: " + x, examples['snippet']))
     tokenized_examples = tokenizer(
-        examples['snippet'],
-        text_target = examples['rewritten_intent'],
+        examples_with_prompts,
         truncation=True,
         max_length=max_seq_length,
         padding='max_length',
+        return_tensors = 'pt'
     )
+
+    tokenized_examples['label'] = tokenizer(
+        examples['rewritten_intent'],
+        truncation=True,
+        max_length=max_seq_length,
+        padding='max_length',
+        return_tensors = 'pt'
+    )['input_ids']
 
     return tokenized_examples
 
@@ -32,15 +41,15 @@ def compute_rouge_and_bleu(eval_preds: EvalPrediction, tokenizer):
     rouge = evaluate.load("rouge")
     bleu = evaluate.load("bleu")
 
-    argmax = np.argmax(eval_preds.predictions[0], axis = 1)
+    argmax = np.argmax(eval_preds.predictions[0], axis = -1)
 
     decoded_predictions = [tokenizer.decode(x) for x in argmax]
     decoded_labels = [tokenizer.decode(x) for x in eval_preds.label_ids]
 
     return {
-        'rouge': rouge.compute(predictions=decoded_predictions,
+        **rouge.compute(predictions=decoded_predictions,
                                references=decoded_labels),
-        'bleu': bleu.compute(predictions=decoded_predictions,
+        **bleu.compute(predictions=decoded_predictions,
                                references=decoded_labels)
     }
 

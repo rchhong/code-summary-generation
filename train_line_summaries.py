@@ -1,7 +1,7 @@
 import datasets
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
-    AutoModelForSeq2SeqLM, Trainer, TrainingArguments, HfArgumentParser
+    AutoModelForSeq2SeqLM, Trainer, TrainingArguments, HfArgumentParser, T5ForConditionalGeneration
 from helpers import prepare_dataset_code_summary, compute_rouge_and_bleu
 import os
 import json
@@ -29,7 +29,7 @@ def main():
     #     *This argument is required*.
 
     argp.add_argument('--model', type=str,
-                      default='uclanlp/plbart-python-en_XX',
+                      default='Salesforce/codet5-base',
                       help="""This argument specifies the base model to fine-tune.
         This should either be a HuggingFace model ID (see https://huggingface.co/models)
         or a path to a saved model checkpoint (a folder containing config.json and pytorch_model.bin).""")
@@ -60,10 +60,7 @@ def main():
 
     task_kwargs = {}
 
-    tokenizer_kwargs = {
-        'src_lang': 'python',
-        'tgt_lang': 'en_XX'
-    }
+    tokenizer_kwargs = {}
 
     # Here we select the right model fine-tuning head
     model_classes = {'code-summary': AutoModelForSeq2SeqLM}
@@ -172,8 +169,7 @@ def main():
         with open(os.path.join(training_args.output_dir, 'eval_predictions.jsonl'), encoding='utf-8', mode='w') as f:
             for i, example in enumerate(eval_dataset):
                 example_with_prediction = dict(example)
-                example_with_prediction['predicted_scores'] = eval_predictions.predictions[i].tolist()
-                example_with_prediction['predicted_label'] = int(eval_predictions.predictions[i].argmax())
+                example_with_prediction['predicted_intent'] = tokenizer.decode(eval_predictions.predictions[i].argmax(axis = -1).squeeze())
                 f.write(json.dumps(example_with_prediction))
                 f.write('\n')
 
