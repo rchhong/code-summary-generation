@@ -171,7 +171,6 @@ def main():
         with open(os.path.join(training_args.output_dir, 'eval_metrics.json'), encoding='utf-8', mode='w') as f:
             json.dump(results, f)
 
-        # TODO: Change this
         with open(os.path.join(training_args.output_dir, 'eval_predictions.jsonl'), encoding='utf-8', mode='w') as f:
             for i, example in enumerate(eval_dataset):
                 example_with_prediction = dict(example)
