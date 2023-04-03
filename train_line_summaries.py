@@ -1,7 +1,6 @@
 import datasets
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
-    AutoModelForSeq2SeqLM, Trainer, TrainingArguments, HfArgumentParser, T5ForConditionalGeneration
+from transformers import AutoTokenizer, DataCollatorForSeq2Seq,\
+    AutoModelForSeq2SeqLM, Seq2SeqTrainer, Seq2SeqTrainingArguments, HfArgumentParser
 from helpers import prepare_dataset_code_summary, compute_rouge_and_bleu
 import os
 import json
@@ -10,7 +9,7 @@ NUM_PREPROCESSING_WORKERS = 2
 
 
 def main():
-    argp = HfArgumentParser(TrainingArguments)
+    argp = HfArgumentParser(Seq2SeqTrainingArguments)
     # The HfArgumentParser object collects command-line arguments into an object (and provides default values for unspecified arguments).
     # In particular, TrainingArguments has several keys that you'll need/want to specify (when you call run.py from the command line):
     # --do_train
@@ -68,6 +67,7 @@ def main():
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
     model = model_class.from_pretrained(args.model, **task_kwargs)
     tokenizer = AutoTokenizer.from_pretrained(args.model, **tokenizer_kwargs, use_fast=True)
+    data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
     # Select the dataset preprocessing function (these functions are defined in helpers.py)
     if args.task == 'code-summary':
@@ -107,7 +107,7 @@ def main():
         )
 
     # Select the training configuration
-    trainer_class = Trainer
+    trainer_class = Seq2SeqTrainer
     eval_kwargs = {}
     trainer_kwargs = {}
     # If you want to use custom metrics, you should define your own "compute_metrics" function.
@@ -125,14 +125,20 @@ def main():
         eval_predictions = eval_preds
         return compute_metrics(eval_preds, tokenizer)
 
+    def argmax_logits(model_output, labels):
+        logits, hidden = model_output
+        return logits.argmax(axis = -1)
+
     # Initialize the Trainer object with the specified arguments and the model and dataset we loaded above
     trainer = trainer_class(
         model=model,
         args=training_args,
         train_dataset=train_dataset_featurized,
         eval_dataset=eval_dataset_featurized,
+        data_collator=data_collator,
         tokenizer=tokenizer,
         compute_metrics=compute_metrics_and_store_predictions,
+        preprocess_logits_for_metrics=argmax_logits,
         **trainer_kwargs
     )
 
@@ -169,7 +175,7 @@ def main():
         with open(os.path.join(training_args.output_dir, 'eval_predictions.jsonl'), encoding='utf-8', mode='w') as f:
             for i, example in enumerate(eval_dataset):
                 example_with_prediction = dict(example)
-                example_with_prediction['predicted_intent'] = tokenizer.decode(eval_predictions.predictions[i].argmax(axis = -1).squeeze())
+                example_with_prediction['predicted_intent'] = tokenizer.decode(eval_predictions.predictions[i], skip_special_tokens=True).strip()
                 f.write(json.dumps(example_with_prediction))
                 f.write('\n')
 

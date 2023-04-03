@@ -10,6 +10,8 @@ from tqdm.auto import tqdm
 
 import evaluate
 
+rouge = evaluate.load("rouge")
+bleu = evaluate.load("bleu")
 
 # This function preprocesses the CoNoLA dataset.  Tokenizes snippets and produces natural language
 def prepare_dataset_code_summary(examples, tokenizer, max_seq_length=None):
@@ -18,19 +20,12 @@ def prepare_dataset_code_summary(examples, tokenizer, max_seq_length=None):
     examples_with_prompts = list(map(lambda x: "Summarize Python: " + x, examples['snippet']))
     tokenized_examples = tokenizer(
         examples_with_prompts,
+        text_target=examples['rewritten_intent'],
         truncation=True,
         max_length=max_seq_length,
         padding='max_length',
         return_tensors = 'pt'
     )
-
-    tokenized_examples['label'] = tokenizer(
-        examples['rewritten_intent'],
-        truncation=True,
-        max_length=max_seq_length,
-        padding='max_length',
-        return_tensors = 'pt'
-    )['input_ids']
 
     return tokenized_examples
 
@@ -38,13 +33,18 @@ def prepare_dataset_code_summary(examples, tokenizer, max_seq_length=None):
 # This function computes sentence-classification accuracy.
 # Functions with signatures like this one work as the "compute_metrics" argument of transformers.Trainer.
 def compute_rouge_and_bleu(eval_preds: EvalPrediction, tokenizer):
-    rouge = evaluate.load("rouge")
-    bleu = evaluate.load("bleu")
+    encoded_predictions = eval_preds.predictions
 
-    argmax = np.argmax(eval_preds.predictions[0], axis = -1)
+    decoded_predictions = tokenizer.batch_decode(encoded_predictions, skip_special_tokens=True)
 
-    decoded_predictions = [tokenizer.decode(x) for x in argmax]
-    decoded_labels = [tokenizer.decode(x) for x in eval_preds.label_ids]
+    labels = np.where(eval_preds.label_ids != -100, eval_preds.label_ids, tokenizer.pad_token_id)
+    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+    decoded_predictions = [pred.strip() for pred in decoded_predictions]
+    decoded_labels = [[label.strip()] for label in decoded_labels]
+
+    print(decoded_predictions)
+    print(decoded_labels)
 
     return {
         **rouge.compute(predictions=decoded_predictions,
