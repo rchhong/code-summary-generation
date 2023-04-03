@@ -47,3 +47,6 @@ chmod +x scripts/*
 
 ## Fine-Tuning + Evaluation of Translation Module
 ```
+./scripts/train_and_eval.sh
+```
+To tune hyperparameters and environment variables, please edit `./scripts/train_and_eval.sh`.  You should not have to adjust the directories, but the hyperparameters can be adjusted at will.
