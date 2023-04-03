@@ -43,9 +43,6 @@ def compute_rouge_and_bleu(eval_preds: EvalPrediction, tokenizer):
     decoded_predictions = [pred.strip() for pred in decoded_predictions]
     decoded_labels = [[label.strip()] for label in decoded_labels]
 
-    print(decoded_predictions)
-    print(decoded_labels)
-
     return {
         **rouge.compute(predictions=decoded_predictions,
                                references=decoded_labels),
