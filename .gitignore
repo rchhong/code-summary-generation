@@ -2,3 +2,5 @@
 output/
 trained_model*/
 conala-corpus/
+single_line_summarization_model
+.env

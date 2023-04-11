@@ -7,3 +7,4 @@ torch
 absl-py
 rouge_score
 nltk
+openai
