@@ -7,9 +7,9 @@ from collections import deque
 
 parentPath = "./codesearchnet-corpus/python/final/jsonl"
 directories = [
-    'test', 
-    'train', 
-    'valid'
+    # 'test', 
+    'train2', 
+    # 'valid'
 ]
 
 def remove_comments(source):
@@ -92,18 +92,39 @@ for d in directories:
                 else:
                     code_lines_deque.append(l)
 
-            # rule: if ends with :, include next line
+            # rule: if ends with ":" or "[" or "{" or "(", include next line
+            # rule: if ends with "\" or ",", include next line (strip)
+            # rule: if line starts with ".", include it (strip)
+            # rule: if line starts with "]" or "}" or ")", include it
             skip = False
             updated_code_lines = []
             while(len(code_lines_deque) > 0):
                 current_line = []
+                stripNext = False
                 while(True):
                     if len(code_lines_deque) == 0:
                         skip = True
                         break
-                    current_line.append(code_lines_deque.popleft())
-                    if current_line[-1].strip()[-1] != ":":
-                        break
+
+                    code_line = code_lines_deque.popleft()
+                    if stripNext:
+                        code_line = code_line.lstrip()
+                    stripNext = False
+                    current_line.append(code_line)
+
+                    if current_line[-1].strip()[-1] in [":", "[", "{", "("]:
+                        continue
+                    if current_line[-1].strip()[-1] in ["\\", ","]:
+                        current_line[-1] = code_line.rstrip() + " "
+                        stripNext = True
+                        continue
+                    if len(code_lines_deque) >= 1 and code_lines_deque[0].strip()[0] == ".":
+                        current_line[-1] = code_line.rstrip()
+                        stripNext = True
+                        continue
+                    if len(code_lines_deque) >= 1 and code_lines_deque[0].strip()[0] in ["]", "}", ")"]:
+                        continue
+                    break
                 if skip:
                     break
                 updated_code_lines.append("".join(current_line))

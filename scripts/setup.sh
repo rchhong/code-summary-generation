@@ -31,4 +31,4 @@ for filename in ./*; do
 done
 
 cd ../../../../..
-python3 preprocess.py
+# python3 preprocess.py
