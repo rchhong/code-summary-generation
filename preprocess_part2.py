@@ -28,19 +28,23 @@ for d in subdirectories:
         f.close()
 
         newFile = open(os.path.join(parentPath, destDir, d, filename), "w")
+        fileNum = filename.split(".")[0].split("_")[-1]
         
         lineCounts = []
         for i, line in tqdm(enumerate(lines)):
             content = json.loads(line)
-            lineCounts.append(len(content["code"]))
-            for code_line in content["code"]:
+            code_lines = len(content["code"])
+            lineCounts.append(code_lines)
+            for code_line_index, code_line in enumerate(content["code"]):
                 example = {
-                    "example": i,
+                    "id": f"{fileNum}-{i}",
+                    "index": code_line_index,
+                    "lines": code_lines,
                     "code": code_line
                 }
                 newFile.write(json.dumps(example) + "\n")
 
-        with open(os.path.join(parentPath, destDir, d, filename.split(".")[0] + "_LineCounts.json"), "w") as lcFile:
-            lcFile.write(json.dumps(lineCounts))
+        # with open(os.path.join(parentPath, destDir, d, filename.split(".")[0] + "_LineCounts.json"), "w") as lcFile:
+        #     lcFile.write(json.dumps(lineCounts))
 
         newFile.close()
