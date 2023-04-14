@@ -1,10 +1,8 @@
-import openai
 import datasets
-from transformers import SummarizationPipeline, pipeline
+from transformers import pipeline
 # from helpers import prepare_dataset_code_summary, compute_rouge_and_bleu
 # from transformers.pipelines.pt_utils import KeyDataset
 from tqdm import tqdm
-import os
 import json
 
 NUM_PREPROCESSING_WORKERS = 2
