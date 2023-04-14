@@ -4,3 +4,5 @@ trained_model*/
 conala-corpus/
 single_line_summarization_model
 .env
+line_summaries.jsonl
+joined_file.jsonl
