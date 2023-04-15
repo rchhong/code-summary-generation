@@ -65,7 +65,7 @@ def generate_line_by_line_summaries(dataset, path_to_model, batch_size = 8):
 PREFIX = "Summarize Python:"
 def _preprocess_dataset(examples, tokenizer, max_seq_length=None):
     max_seq_length = tokenizer.model_max_length if max_seq_length is None else max_seq_length
-    examples_with_prompts= ["Summarize Python:" + ex for ex in examples['code']]
+    examples_with_prompts= [PREFIX + ex for ex in examples['code']]
 
     tokenized_examples = tokenizer(
         examples_with_prompts,
