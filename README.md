@@ -69,7 +69,15 @@ Required for the GPT-summarization and the BART abalation study.  Warning: takes
 
 ## Generating CodeT5 Control Summaries
 ```
+./scripts/generate_codet5.sh
 ```
 
 
 To tune hyperparameters and environment variables, please edit `./scripts/train_and_eval.sh`.  You should not have to adjust the directories, but the hyperparameters can be adjusted at will.
+
+## Computing Metrics
+Substitute the model that you wish to evaluate the quality of the summaries of for the model argument.
+
+'''
+python compute_scores --model {gpt, bart, codet5}
+'''
