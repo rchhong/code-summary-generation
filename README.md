@@ -53,6 +53,6 @@ To tune hyperparameters and environment variables, please edit `./scripts/train_
 
 ## Generating GPT-Assisted Summaries
 ```
-./scripts/train_and_eval.sh
+./scripts/generate_gpt.sh
 ```
 To tune hyperparameters and environment variables, please edit `./scripts/train_and_eval.sh`.  You should not have to adjust the directories, but the hyperparameters can be adjusted at will.
