@@ -51,8 +51,25 @@ chmod +x scripts/*
 ```
 To tune hyperparameters and environment variables, please edit `./scripts/train_and_eval.sh`.  You should not have to adjust the directories, but the hyperparameters can be adjusted at will.
 
-## Generating GPT-Assisted Summaries
+## Generating the line-by-line summaries
+Required for the GPT-summarization and the BART abalation study.  Warning: takes a very long time to run this.
+```
+./scripts/generate_line_summaries.sh
+```
+
+## Generating GPT-Assisted Line-by-line-based Summaries
 ```
 ./scripts/generate_gpt.sh
 ```
+
+## Generating BART-Assisted Line-by-line-based Summaries
+```
+./scripts/generate_bart.sh
+```
+
+## Generating CodeT5 Control Summaries
+```
+```
+
+
 To tune hyperparameters and environment variables, please edit `./scripts/train_and_eval.sh`.  You should not have to adjust the directories, but the hyperparameters can be adjusted at will.

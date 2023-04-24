@@ -1,6 +1,2 @@
 #!/bin/bash
-
-# WARNING: THIS TAKES A VERY LONG TIME, WOULD NOT RECOMMEND CALLING THIS SCRIPT
-python generate_line_summaries.py
-python join_lines.py
-python generate_gpt_summary.py
+python generate_full_summary.py --model gpt
